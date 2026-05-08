@@ -926,6 +926,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                     "partner_id": self.partner_root.id,
                     "share": False,
                     "active": False,
+                    "status_message": False,
                 },
                 {
                     "all_employee_ids": [self.employees[0].id],
@@ -940,6 +941,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                     "res_users_settings_id": user_0.res_users_settings_id.id,
                     "share": False,
                     "signature": ["markup", str(user_0.signature)],
+                    "status_message": False,
                 },
             ),
             "res.users.settings": [
@@ -2854,6 +2856,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "should_display_in_call_im_status": False,
                 "partner_id": partner.id,
                 "share": False,
+                "status_message": False,
             }
         if user == self.users[1]:
             res = {
@@ -2887,6 +2890,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "should_display_in_call_im_status": False,
                 "partner_id": partner.id,
                 "share": False,
+                "status_message": False,
             }
         if user in (self.users[3], self.users[4], self.users[8]):
             return {
@@ -2898,6 +2902,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "should_display_in_call_im_status": False,
                 "partner_id": partner.id,
                 "share": False,
+                "status_message": False,
             }
         if user == self.users[12]:
             return {
@@ -2909,6 +2914,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "should_display_in_call_im_status": False,
                 "partner_id": partner.id,
                 "share": False,
+                "status_message": False,
             }
         if user == self.users[14]:
             return {
@@ -2920,6 +2926,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "should_display_in_call_im_status": False,
                 "partner_id": partner.id,
                 "share": False,
+                "status_message": False,
             }
         if user == self.users[15]:
             return {
@@ -2931,6 +2938,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 "should_display_in_call_im_status": False,
                 "partner_id": partner.id,
                 "share": False,
+                "status_message": False,
             }
         if user == self.user_root:
             return {
