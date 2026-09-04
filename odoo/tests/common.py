@@ -1394,7 +1394,147 @@ class ChromeBrowser:
         self._websocket_request('Emulation.setCPUThrottlingRate', params={'rate': factor})
 
     def stop(self):
+<<<<<<< 40e9be2b5ab8828bdab450fb6c8c40f2104a36a6
         self.cleanup.close()
+||||||| 8d5d88ad0f6939d40b1503ef0f5dd18810415fc5
+        if hasattr(self, 'ws'):
+            try:
+                self._websocket_send('Page.stopScreencast')
+                if self.screencasts_dir:
+                    screencasts_frames_dir = self.screencasts_frames_dir
+                    self.screencasts_dir = None
+                    if os.path.isdir(screencasts_frames_dir):
+                        shutil.rmtree(screencasts_frames_dir, ignore_errors=True)
+
+                self._websocket_request('Page.stopLoading')
+                self._websocket_request('Runtime.evaluate', params={'expression': """
+                ('serviceWorker' in navigator) &&
+                    navigator.serviceWorker.getRegistrations().then(
+                        registrations => Promise.all(registrations.map(r => r.unregister()))
+                    )
+                """, 'awaitPromise': True})
+                # wait for the screenshot or whatever
+                wait(self._responses.values(), 10)
+                self._result.cancel()
+
+                self._logger.info("Closing chrome headless with pid %s", self.chrome.pid)
+                self._websocket_request('Browser.close')
+            except ChromeBrowserException as e:
+                _logger.runbot("WS error during browser shutdown: %s", e)
+                self.chrome_log_level = logging.RUNBOT
+            except Exception:  # noqa: BLE001
+                _logger.warning("Error during browser shutdown", exc_info=True)
+                self.chrome_log_level = logging.RUNBOT
+            self._logger.info("Closing websocket connection")
+            self.ws.close()
+        if self.chrome:
+            self._logger.info("Terminating chrome headless with pid %s", self.chrome.pid)
+            main = psutil.Process(self.chrome.pid)
+            children = main.children(recursive=True)
+            children.insert(0, main)
+            self.chrome.terminate()
+            _, alive = psutil.wait_procs(children, 15)
+            if alive:
+                self._logger.warning(
+                    "Killing chrome descendants-or-self of %s: %d remaining%s",
+                    self.chrome.pid,
+                    len(alive),
+                    "".join(f"\n- {p.name()} ({p.status()})" for p in alive),
+                )
+                for p in alive:
+                    p.kill()
+                psutil.wait_procs(alive, 1)
+                self.chrome_log_level = logging.RUNBOT
+
+        if self.user_data_dir and os.path.isdir(self.user_data_dir) and self.user_data_dir != '/':
+            log = self.read_log()
+            if log:
+                save_test_file(
+                    self.test_class.__name__,
+                    log,
+                    prefix='chrome_log_',
+                    extension='txt',
+                    document_type="Chrome Log",
+                    logger=self._logger,
+                    loglevel=self.chrome_log_level,
+                    directory='chrome_logs',
+                )
+            self._logger.info('Removing chrome user profile "%s"', self.user_data_dir)
+            shutil.rmtree(self.user_data_dir, ignore_errors=True)
+
+        # Restore previous signal handler
+        if self.sigxcpu_handler and os.name == 'posix':
+            signal.signal(signal.SIGXCPU, self.sigxcpu_handler)
+=======
+        if hasattr(self, 'ws'):
+            try:
+                self._websocket_send('Page.stopScreencast')
+                if self.screencasts_dir:
+                    screencasts_frames_dir = self.screencasts_frames_dir
+                    self.screencasts_dir = None
+                    if os.path.isdir(screencasts_frames_dir):
+                        shutil.rmtree(screencasts_frames_dir, ignore_errors=True)
+
+                self._websocket_request('Page.stopLoading')
+                self._websocket_request('Runtime.evaluate', params={'expression': """
+                ('serviceWorker' in navigator) &&
+                    navigator.serviceWorker.getRegistrations().then(
+                        registrations => Promise.all(registrations.map(r => r.unregister()))
+                    )
+                """, 'awaitPromise': True})
+                # wait for the screenshot or whatever
+                wait(self._responses.values(), 10)
+                self._result.cancel()
+
+                self._logger.info("Closing chrome headless with pid %s", self.chrome.pid)
+                self._websocket_request('Browser.close')
+            except ChromeBrowserException as e:
+                _logger.runbot("WS error during browser shutdown: %s", e)
+                self.chrome_log_level = logging.RUNBOT
+            except Exception:  # noqa: BLE001
+                _logger.warning("Error during browser shutdown", exc_info=True)
+                self.chrome_log_level = logging.RUNBOT
+            self._logger.info("Closing websocket connection")
+            self.ws.close()
+        if self.chrome.poll() is None:
+            self._logger.info("Terminating chrome headless with pid %s", self.chrome.pid)
+            main = psutil.Process(self.chrome.pid)
+            children = main.children(recursive=True)
+            children.insert(0, main)
+            self.chrome.terminate()
+            _, alive = psutil.wait_procs(children, 15)
+            if alive:
+                self._logger.warning(
+                    "Killing chrome descendants-or-self of %s: %d remaining%s",
+                    self.chrome.pid,
+                    len(alive),
+                    "".join(f"\n- {p.name()} ({p.status()})" for p in alive),
+                )
+                for p in alive:
+                    p.kill()
+                psutil.wait_procs(alive, 1)
+                self.chrome_log_level = logging.RUNBOT
+
+        if self.user_data_dir and os.path.isdir(self.user_data_dir) and self.user_data_dir != '/':
+            log = self.read_log()
+            if log:
+                save_test_file(
+                    self.test_class.__name__,
+                    log,
+                    prefix='chrome_log_',
+                    extension='txt',
+                    document_type="Chrome Log",
+                    logger=self._logger,
+                    loglevel=self.chrome_log_level,
+                    directory='chrome_logs',
+                )
+            self._logger.info('Removing chrome user profile "%s"', self.user_data_dir)
+            shutil.rmtree(self.user_data_dir, ignore_errors=True)
+
+        # Restore previous signal handler
+        if self.sigxcpu_handler and os.name == 'posix':
+            signal.signal(signal.SIGXCPU, self.sigxcpu_handler)
+>>>>>>> 446d14b27ebf45dd630903a9f3aa9cd4e181a62b
 
     @property
     def executable(self):
@@ -1626,10 +1766,16 @@ class ChromeBrowser:
                 self._logger.debug('\n<- %s', msg)
             except websocket.WebSocketTimeoutException:
                 continue
-            except websocket.WebSocketConnectionClosedException as e:
+            except (websocket.WebSocketConnectionClosedException, ConnectionResetError):
                 if not self._result.done():
                     del self.ws
-                    self._result.set_exception(e)
+                    try:
+                        status = "exit status %s" % self.chrome.wait(5)
+                    except subprocess.TimeoutExpired:
+                        status = "still running"
+                    self._result.set_exception(
+                        ChromeBrowserException("Lost connection to browser: %s" % status),
+                    )
                     while True:
                         try:
                             _, f = self._responses.popitem()
@@ -1639,8 +1785,6 @@ class ChromeBrowser:
                             f.cancel()
                 return
             except Exception as e:
-                if isinstance(e, ConnectionResetError) and self._result.done():
-                    return
                 # if the socket is still connected something bad happened,
                 # otherwise the client was just shut down
                 if self.ws.connected:
@@ -1909,10 +2053,16 @@ which leads to stray network requests and inconsistencies."""
         self.error_checker = error_checker
         self._logger.info('Evaluate test code "%s"', code)
         start = time.time()
-        res = self._websocket_request('Runtime.evaluate', params={
-            'expression': code,
-            'awaitPromise': True,
-        }, timeout=timeout)['result']
+        try:
+            res = self._websocket_request('Runtime.evaluate', params={
+                'expression': code,
+                'awaitPromise': True,
+            }, timeout=timeout)['result']
+        except CancelledError:
+            exc = self._result.done() and self._result.exception()
+            if exc:
+                raise exc from None
+            raise
         if res.get('subtype') == 'error':
             raise ChromeBrowserException("Running code returned an error: %s" % res)
 
@@ -1938,7 +2088,7 @@ which leads to stray network requests and inconsistencies."""
 
         if isinstance(err, concurrent.futures.TimeoutError):
             raise ChromeBrowserException('Script timeout exceeded') from err
-        raise ChromeBrowserException("Unknown error") from err
+        raise ChromeBrowserException("Unknown error: %r" % err) from err
 
     def navigate_to(self, url, wait_stop=False):
         self._logger.info('Navigating to: "%s"', url)
