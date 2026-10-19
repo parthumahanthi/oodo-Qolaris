@@ -77,6 +77,31 @@ class QRPrintTest(AccountTestInvoicingCommon):
         #However, a qr bill can't be printed with those infos
         self.assertFalse(self.wrong_partner_invoice.l10n_ch_is_qr_valid)
 
+<<<<<<< 60657b50d171ddf84ab58717fdee5ac26031065b
+||||||| 24a82cb2dad91a4baa99c0da88c39553c519c4a4
+    def _run_wkhtmltopdf(*args, **kwargs):
+        # use the sample pdf to mock the pdf generation
+        return file_open('base/tests/multi_kids_embedded.pdf', 'rb').read()
+
+=======
+    def test_print_draft_invoice_qr_iban(self):
+        """ Test that a draft invoice using a QR-IBAN can be printed even when in draft """
+        address = {'street': 'Rue du Lac 1', 'zip': '1000', 'city': 'Lausanne', 'country_id': self.env.ref('base.ch').id}
+        (self.qr_bank_account.partner_id + self.partner).write(address)
+        invoice = self.correct_invoice_chf
+        report = self.env['ir.actions.report'].with_context(force_report_rendering=True)
+        with patch.object(self.env.registry['ir.actions.report'], '_run_wkhtmltopdf', self._run_wkhtmltopdf):
+            report._render_qweb_pdf('account.account_invoices', invoice.ids)
+            self.assertFalse(invoice.l10n_ch_is_qr_valid)
+            invoice.action_post()
+            self.assertTrue(invoice.l10n_ch_is_qr_valid)
+            report._render_qweb_pdf('account.account_invoices', invoice.ids)
+
+    def _run_wkhtmltopdf(*args, **kwargs):
+        # use the sample pdf to mock the pdf generation
+        return file_open('base/tests/multi_kids_embedded.pdf', 'rb').read()
+
+>>>>>>> aba1631792770d0e4bb0fca85ca4768454beb837
     def _create_invoice_partners_with_incomplete_addresses(self):
         self.creditor_partner = self.qr_bank_account.partner_id
         self.creditor_partner.write({
