@@ -827,11 +827,30 @@ class StockMove(models.Model):
         dropship_price_unit = dropship_moves._get_price_unit_dropshipped()
         regular_moves = (self - dropship_moves).filtered(lambda m: m.is_out)
         regular_quantity = sum(m._get_valued_qty() for m in regular_moves)
+<<<<<<< e77213ec907698be7a4b8f05b842e31dcf9983d4
         regular_price_unit = regular_moves._get_price_unit(product=product)
+||||||| 5287e806933c335909767faacb9255ea85995ba1
+        regular_price_unit = regular_moves._get_price_unit()
+=======
+        regular_value = regular_quantity * regular_moves._get_price_unit()
+        # only the returns deducted from the delivered quantity
+        returned_moves = (self - dropship_moves).filtered(lambda m: m.is_in and m.origin_returned_move_id and m.to_refund)
+        returned_quantity = sum(m._get_valued_qty() for m in returned_moves)
+        regular_value -= returned_quantity * returned_moves._get_price_unit()
+        regular_quantity -= returned_quantity
+>>>>>>> e770b08371fbc0d90ac6a082c00c8d31c9e6105b
         total_quantity = dropship_quantity + regular_quantity
         if not total_quantity:
+<<<<<<< e77213ec907698be7a4b8f05b842e31dcf9983d4
             return self._get_price_unit(product=product)
         return (dropship_quantity * dropship_price_unit + regular_quantity * regular_price_unit) / total_quantity
+||||||| 5287e806933c335909767faacb9255ea85995ba1
+            return self._get_price_unit()
+        return (dropship_quantity * dropship_price_unit + regular_quantity * regular_price_unit) / total_quantity
+=======
+            return self._get_price_unit()
+        return (dropship_quantity * dropship_price_unit + regular_value) / total_quantity
+>>>>>>> e770b08371fbc0d90ac6a082c00c8d31c9e6105b
 
     def _get_price_unit_dropshipped(self):
         """ Returns the unit price to value the dropshipped moves."""
