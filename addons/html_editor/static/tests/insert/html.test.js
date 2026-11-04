@@ -238,7 +238,8 @@ describe("collapsed selection", () => {
 
     // The following are edge cases where we try to insert in impossible places.
     describe("inserting in impossible places", () => {
-        const table = "<table><tbody><tr><td/></tr></tbody></table>";
+        const table =
+            '<table class="table table-bordered o_table"><tbody><tr><td/></tr></tbody></table>';
         const normalizedTable = table.replace("<td/>", "<td><br></td>");
         const wrappedTable = `<div class="o_table_wrapper">${normalizedTable}</div>`;
         test("never unwrap tables in breakable paragraph", async () => {
@@ -265,7 +266,7 @@ describe("collapsed selection", () => {
             expect(formatNodesForComparing(insertedNodes)).toEqual([normalizedTable]);
             editor.shared.history.commit();
             expect(getContent(editor.editable)).toBe(
-                `<p data-selection-placeholder=""><br></p>${wrappedTable}<p data-selection-placeholder="" class="o-horizontal-caret o-we-hint" style="margin: -9px 0px 8px;" o-we-hint-text='Type "/" for commands'>[]<br></p>`
+                `<p data-selection-placeholder=""><br></p>${wrappedTable}<p data-selection-placeholder="" style="margin: -9px 0px 8px;" class="o-horizontal-caret o-we-hint" o-we-hint-text='Type "/" for commands'>[]<br></p>`
             );
         });
 
@@ -290,7 +291,7 @@ describe("collapsed selection", () => {
             expect(formatNodesForComparing(insertedNodes)).toEqual([normalizedTable]);
             editor.shared.history.commit();
             expect(getContent(editor.editable)).toBe(
-                `<p data-selection-placeholder=""><br></p>${wrappedTable}<p data-selection-placeholder="" class="o-horizontal-caret o-we-hint" style="margin: -9px 0px 8px;" o-we-hint-text='Type "/" for commands'>[]<br></p><p class="oe_unbreakable">content</p><p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>`
+                `<p data-selection-placeholder=""><br></p>${wrappedTable}<p data-selection-placeholder="" style="margin: -9px 0px 8px;" class="o-horizontal-caret o-we-hint" o-we-hint-text='Type "/" for commands'>[]<br></p><p class="oe_unbreakable">content</p><p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>`
             );
         });
 
@@ -303,7 +304,7 @@ describe("collapsed selection", () => {
             expect(formatNodesForComparing(insertedNodes)).toEqual([normalizedTable]);
             editor.shared.history.commit();
             expect(getContent(editor.editable)).toBe(
-                `<p data-selection-placeholder=""><br></p>${wrappedTable}<p data-selection-placeholder="" class="o-horizontal-caret o-we-hint" style="margin: -9px 0px 8px;" o-we-hint-text='Type "/" for commands'>[]<br></p><p class="oe_unbreakable">\u200bcontent</p><p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>`
+                `<p data-selection-placeholder=""><br></p>${wrappedTable}<p data-selection-placeholder="" style="margin: -9px 0px 8px;" class="o-horizontal-caret o-we-hint" o-we-hint-text='Type "/" for commands'>[]<br></p><p class="oe_unbreakable">\u200bcontent</p><p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>`
             );
         });
 
@@ -766,7 +767,7 @@ describe("collapsed selection", () => {
 
     test("should add the cells missing from a ragged table with mixed rowspan/colspan", async () => {
         const { el, editor } = await setupEditor(`<p>[]<br></p>`);
-        const table = `<table><tbody><tr><td rowspan="2" colspan="2">A</td><td>B</td></tr><tr><td>C</td></tr><tr><td>D</td></tr></tbody></table>`;
+        const table = `<table class="table table-bordered o_table"><tbody><tr><td rowspan="2" colspan="2">A</td><td>B</td></tr><tr><td>C</td></tr><tr><td>D</td></tr></tbody></table>`;
         const completedTable = table.replace(
             "</tr></tbody></table>",
             "<td><p><br></p></td><td><p><br></p></td></tr></tbody></table>"
@@ -775,7 +776,7 @@ describe("collapsed selection", () => {
         expect(formatNodesForComparing(insertedNodes)).toEqual([completedTable]);
         editor.shared.history.commit();
         expect(getContent(el)).toBe(
-            `<p data-selection-placeholder=""><br></p><div class="o_table_wrapper">${completedTable}</div><p data-selection-placeholder="" class="o-horizontal-caret o-we-hint" style="margin: -9px 0px 8px;" o-we-hint-text='Type "/" for commands'>[]<br></p>`
+            `<p data-selection-placeholder=""><br></p><div class="o_table_wrapper">${completedTable}</div><p data-selection-placeholder="" style="margin: -9px 0px 8px;" class="o-horizontal-caret o-we-hint" o-we-hint-text='Type "/" for commands'>[]<br></p>`
         );
     });
 
