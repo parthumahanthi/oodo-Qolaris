@@ -122,3 +122,41 @@ useOnChange(
 
 Code that still calls these hooks keeps them until its own migration: a change that only
 touches nearby lines does not have to convert them.
+
+# Order concurrent calls with the concurrency helpers
+
+When a call can start before the previous one has ended and the calls or their answers
+change the same state (a request on each key in a search, or on each save), order the
+calls with a helper of `@web/core/utils/concurrency`, never with a promise chain kept
+by hand. Calls that share no state, such as starring two different records, need no
+helper: a `Mutex` would only queue them for nothing.
+
+- `KeepLast` when only the last answer matters, as for a search: `add(promise)` returns
+  a promise that never settles when a newer promise is added before `promise` settled.
+- `Mutex` when every call must run, one after the other, as for a save: `exec(fn)`
+  starts `fn` once the previous call has settled, resolved or rejected.
+
+```js
+// bad: after one failed request, no later request is ever sent
+this.lastSave = this.lastSave.then(() => this.saveQuantity(quantity));
+
+// good
+return this.saveMutex.exec(() => this.saveQuantity(quantity));
+```
+
+Without a helper, the answers come back in any order: the screen shows the answer of an
+older request, or two calls change the same state at once. A chain kept by hand rewrites
+`Mutex`, and a `then` with no rejection handler stops it for good at the first error.
+
+Never await a `KeepLast` promise inside `Mutex.exec`: once a newer call replaces it, it
+never settles, and the mutex stays locked.
+
+# JavaScript formatting
+
+- Format: 4-space indent, 100-column lines, double quotes, semicolons, as set by the
+  `prettier/prettier` rule of the eslint config of the web tooling (`addons/web/tooling`).
+  Apply it with `eslint --fix` once `addons/web/tooling/enable.sh` has installed that
+  config at the repository root, never with `prettier` alone: without those options it
+  uses its own defaults (2 spaces, 80 columns) and reflows the whole file.
+- A file that the eslint config ignores keeps its own format: only the lines you write
+  follow the one above.
