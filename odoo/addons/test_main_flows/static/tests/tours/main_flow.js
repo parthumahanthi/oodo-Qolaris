@@ -96,6 +96,46 @@ stepUtils.autoExpandMoreButtons(),
     trigger: '.o_form_saved',
 },
 {
+    trigger: '.o_form_button_create',
+    content: "Create component 1",
+    run: "click",
+}, {
+    trigger: '.o_field_widget[name=name] textarea',
+    run: "edit the_flow.component1",
+}, {
+    trigger: '.o_form_button_save',
+    run: "click",
+}, {
+    trigger: ".o_form_saved",
+},
+{
+    trigger: '.o_form_button_create',
+    content: "Create component 2",
+    run: "click",
+}, {
+    trigger: '.o_field_widget[name=name] textarea',
+    run: "edit the_flow.component2",
+}, {
+    // lots and serial numbers should be enabled
+    trigger: ".o_field_widget[name=store_by] .dropdown-toggle",
+    content: "Open tracking menu",
+    run: "click",
+}, {
+    trigger: ".o_select_menu_item:contains('By Quantity')",
+    content: "Select By Quantity",
+    run: "click",
+},
+{
+    trigger: ".breadcrumb-item:has(a:contains('Products')) a",
+    content: "Go back to Products kanban",
+    run: "click",
+}, {
+    trigger: ".o_kanban_record:contains('the_flow.product')",
+    content: "Re-open the_flow.product",
+    run: "click",
+},
+stepUtils.autoExpandMoreButtons(),
+{
     trigger: ".oe_stat_button div[name=bom_count]",
     content: 'See Bill of material',
     run: "click",
@@ -113,11 +153,10 @@ stepUtils.autoExpandMoreButtons(),
     trigger: ".o_field_x2many_list_row_add > button",
     content: "Click here to add some lines.",
     run: "click",
-}, {
-    isActive: ["desktop"],
+},{
     trigger: ".o_selected_row .o_required_modifier[name=product_id] input",
-    content: "Select a product, or create a new one on the fly.",
-    run: "edit the_flow.component1",
+    content: "Click the row to see the products.",
+    run: "click",
 }, {
     isActive: ["desktop"],
     trigger: ".ui-menu-item > a:contains('the_flow.component1')",
@@ -135,7 +174,7 @@ stepUtils.autoExpandMoreButtons(),
 }, {
     isActive: ["mobile"],
     trigger: '.modal-body .o_form_editable .o_field_widget[name="name"] textarea',
-    content: "Select a product, or create a new one on the fly.",
+    content: "Select a product",
     run: "edit the_flow.component1",
 }, {
 // Edit first component
