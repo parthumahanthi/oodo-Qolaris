@@ -28,6 +28,7 @@ import {
 
 import {
     advanceTime,
+    animationFrame,
     beforeEach,
     describe,
     expect,
@@ -989,6 +990,25 @@ test("shows warning on infinite mirror effect (screen-sharing then fullscreen)",
     await contains("button:contains('Stream paused') i.fa-pause-circle-o");
     await hover(queryFirst("button:contains('Stream paused')"));
     await contains("button:contains('Resume stream') i.fa-play-circle-o");
+});
+
+test("stream paused on infinite mirror effect leaves other cards clickable and resumes at once", async () => {
+    const pyEnv = await startServer();
+    const channelId = pyEnv["discuss.channel"].create({ name: "General" });
+    await start();
+    await openDiscuss(channelId);
+    await click("[title='Start Call']");
+    await click("[title='More']");
+    await click("[title='Share Screen']");
+    await contains("video[type='screen']");
+    await triggerEvents(".o-discuss-Call-mainCards", ["mousemove"]); // show overlay
+    await click("button[title='Fullscreen']");
+    await contains("button:contains('Stream paused')");
+    await contains(".o-discuss-CallParticipantCard:not(.pe-none) img[alt='Avatar']");
+    await hover(queryFirst("button:contains('Stream paused')"));
+    await click("button:contains('Resume stream')");
+    await animationFrame();
+    expect("video[type='screen']").toHaveCount(1);
 });
 
 test("single 'join' (without camera) button when last call was audio-only", async () => {
