@@ -519,24 +519,17 @@ registerWebsitePreviewTour(
             },
         },
         {
-            content: "Drag 'Modnar !!' below 'new_menu'",
+            content: "Wait for drop",
+            trigger:
+                '.oe_menu_editor li:contains("new_menu") > ul > li:contains("new_nested_menu")',
+        },
+        {
+            content: "Nest 'Modnar !!' under 'new_menu', above 'new_nested_menu'",
             trigger:
                 '.oe_menu_editor li:contains("Home") > ul > li:contains("Modnar !!") .oi-draggable',
             run(helpers) {
                 return helpers.drag_and_drop(
                     '.oe_menu_editor li:contains("new_menu") .oi-draggable',
-                    {
-                        position: "bottom",
-                    }
-                );
-            },
-        },
-        {
-            content: "Nest 'Modnar !!' under 'new_menu'",
-            trigger: '.oe_menu_editor li:contains("Modnar !!") .oi-draggable',
-            run(helpers) {
-                return helpers.drag_and_drop(
-                    ".oe_menu_editor li:contains('new_menu') .form-control",
                     {
                         position: "bottom",
                     }
