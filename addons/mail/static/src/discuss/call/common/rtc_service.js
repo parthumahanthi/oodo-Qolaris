@@ -1946,6 +1946,10 @@ export class Rtc extends Record {
                     this.state.screenTrack = undefined;
                     closeStream(this.state.sourceScreenStream);
                     this.state.sourceScreenStream = null;
+                    if (this.state.screenAudioTrack) {
+                        this.state.screenAudioTrack = undefined;
+                        this.updateAudioTrack();
+                    }
                     break;
                 }
             }
@@ -2075,6 +2079,8 @@ export class Rtc extends Record {
             this.state.audioTrack = destination.stream.getAudioTracks()[0];
         } else {
             this.state.audioTrack = micAudioTrack ?? screenAudioTrack;
+            this.audioContext?.close();
+            this.audioContext = undefined;
         }
         await this.network?.updateUpload("audio", this.state.audioTrack);
     }
@@ -2082,7 +2088,9 @@ export class Rtc extends Record {
     async resetMicAudioTrack({ force = false }) {
         this.state.micAudioTrack?.stop();
         this.state.micAudioTrack = undefined;
-        this.state.audioTrack?.stop();
+        if (this.state.audioTrack !== this.state.screenAudioTrack) {
+            this.state.audioTrack?.stop();
+        }
         this.state.audioTrack = undefined;
         if (!this.state.channel) {
             return;
