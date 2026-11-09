@@ -1550,6 +1550,7 @@ test("shows a presenter bar when screen-sharing in discuss calls and meetings", 
     await contains(".o-discuss-CallPresentationBar", { count: 0 });
 });
 
+<<<<<<< e7e3632d5d24585ab3c301778db5964ddbab2aa3
 test("Escape closes meeting UI layers sequentially", async () => {
     /** Escape closes overlay elements → action panel → fullscreen meeting view. */
     const pyEnv = await startServer();
@@ -1575,6 +1576,35 @@ test("Escape closes meeting UI layers sequentially", async () => {
     await contains(".o-discuss-Call");
 });
 
+||||||| 571cc6e02f1d7dd69e5ef61be44f51641e02b2d2
+=======
+test("call of another channel starts with its cards while being in a call", async () => {
+    const pyEnv = await startServer();
+    const [generalId, salesId] = pyEnv["discuss.channel"].create([
+        { name: "General" },
+        { name: "Sales" },
+    ]);
+    pyEnv["discuss.channel.rtc.session"].create({
+        channel_member_id: pyEnv["discuss.channel.member"].create({
+            channel_id: salesId,
+            partner_id: pyEnv["res.partner"].create({ name: "Mario" }),
+        }),
+        channel_id: salesId,
+        is_screen_sharing_on: true,
+    });
+    await start();
+    await openDiscuss(generalId);
+    await click("[title='Start Call']");
+    await contains(".o-discuss-Call.o-selfInCall");
+    await click(".o-mail-DiscussSidebarChannel:text('Sales')");
+    await contains(
+        ".o-discuss-Call:not(.o-selfInCall) .o-discuss-CallParticipantCard[aria-label='Mario']"
+    );
+    await contains(".o-discuss-Call:not(.o-selfInCall) .o-discuss-Call-mainCards:first-child");
+    await contains(".o-discuss-CallPresentationBar", { count: 0 });
+});
+
+>>>>>>> f84be776bd949279c5f163db936759db9d00da13
 test("Access to Pinned Messages from Meeting Chat", async () => {
     await start();
     await openDiscuss();

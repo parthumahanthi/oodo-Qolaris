@@ -3,6 +3,7 @@
 
     <t t-name="discuss.Call">
         <div class="o-discuss-Call user-select-none position-relative shadow-sm" t-att-class="{
+<<<<<<< e7e3632d5d24585ab3c301778db5964ddbab2aa3
             'o-fullSize': this.isFullSize,
             'o-compact': this.props.compact and !this.isMobileOs,
             'o-minimized': this.minimized,
@@ -16,6 +17,35 @@
                 <PttAdBanner t-if="!this.props.compact"/>
                 <BlurPerformanceWarning t-if="this.store.settings.blurPerformanceWarning"/>
                 <CallPresentationBar t-if="this.rtc.selfSession and this.isAnyonePresenting" />
+||||||| 571cc6e02f1d7dd69e5ef61be44f51641e02b2d2
+            'o-fullSize': isFullSize,
+            'o-compact': props.compact and !isMobileOs,
+            'o-minimized': minimized,
+            'position-relative o-mx-0_5 o-mt-0_5 p-1': !rtc.isFullscreen and !props.isPip,
+            'rounded-2': !rtc.isFullscreen and !props.isPip and isActiveCall,
+            'o-hasVideo': channel.videoCount > 0,
+            'o-selfInCall': isActiveCall,
+            'border-bottom': !isActiveCall,
+        }" t-ref="root">
+            <div class="o-discuss-Call-main d-flex flex-column align-items-center justify-content-center position-relative overflow-auto o-scrollbar-thin" t-on-mouseleave="onMouseleaveMain">
+                <PttAdBanner t-if="!props.compact"/>
+                <BlurPerformanceWarning t-if="store.settings.blurPerformanceWarning"/>
+                <CallPresentationBar t-if="rtc.selfSession and isAnyonePresenting" />
+=======
+            'o-fullSize': isFullSize,
+            'o-compact': props.compact and !isMobileOs,
+            'o-minimized': minimized,
+            'position-relative o-mx-0_5 o-mt-0_5 p-1': !rtc.isFullscreen and !props.isPip,
+            'rounded-2': !rtc.isFullscreen and !props.isPip and isActiveCall,
+            'o-hasVideo': channel.videoCount > 0,
+            'o-selfInCall': isActiveCall,
+            'border-bottom': !isActiveCall,
+        }" t-ref="root">
+            <div class="o-discuss-Call-main d-flex flex-column align-items-center justify-content-center position-relative overflow-auto o-scrollbar-thin" t-on-mouseleave="onMouseleaveMain">
+                <PttAdBanner t-if="!props.compact"/>
+                <BlurPerformanceWarning t-if="store.settings.blurPerformanceWarning"/>
+                <CallPresentationBar t-if="isActiveCall and isAnyonePresenting" />
+>>>>>>> f84be776bd949279c5f163db936759db9d00da13
                 <div
                     class="o-discuss-Call-mainCards d-flex align-items-center overflow-hidden h-100 w-100 flex-wrap justify-content-center"
                     t-att-class="{'mt-1': this.minimized}"
