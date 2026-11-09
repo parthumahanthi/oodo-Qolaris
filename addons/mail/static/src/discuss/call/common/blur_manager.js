@@ -85,7 +85,8 @@ export class BlurManager {
         this.video.removeEventListener("loadeddata", this._onVideoPlay);
         this.video.srcObject = null;
         this.isVideoDataLoaded = false;
-        this.selfieSegmentation.reset();
+        this.selfieSegmentation?.close();
+        this.selfieSegmentation = null;
         closeStream(this.canvasStream);
         this.canvasStream = null;
         this._terminateWorker();
@@ -103,7 +104,7 @@ export class BlurManager {
     async _handleWorkerMessage(e) {
         if (e.data.command === "tick") {
             await this._onFrame();
-            this.worker.postMessage({ command: "tock" });
+            this.worker?.postMessage({ command: "tock" });
         }
     }
 
@@ -148,7 +149,12 @@ export class BlurManager {
         if (!this.isVideoDataLoaded) {
             return;
         }
-        await this.selfieSegmentation.send({ image: this.video });
+        try {
+            await this.selfieSegmentation.send({ image: this.video });
+        } catch (error) {
+            this.rejectStreamPromise(error);
+            this.close();
+        }
     }
 
     /**
