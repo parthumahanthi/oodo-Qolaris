@@ -4,11 +4,20 @@ import { MessagingMenuEmpty } from "@mail/core/public_web/messaging_menu/messagi
 import { MessagingMenuItem } from "@mail/core/public_web/messaging_menu/messaging_menu_item";
 import { NotificationItem } from "@mail/core/public_web/notification_item";
 import { htmlToTextContentInline } from "@mail/utils/common/format";
-import { onClickIntent, useOnBottomScrolled, usePeek, useSearch } from "@mail/utils/common/hooks";
+import { onClickIntent, useOnBottomScrolled, usePeek } from "@mail/utils/common/hooks";
 import { computedShallowEqual, incrementFn } from "@mail/utils/common/signal";
 import { useAncestors } from "@mail/core/common/ancestor_plugin";
 
-import { Component, computed, signal, types, useEffect, usePlugin, useProps } from "@odoo/owl";
+import {
+    Component,
+    computed,
+    providePlugins,
+    signal,
+    types,
+    useEffect,
+    usePlugin,
+    useProps,
+} from "@odoo/owl";
 
 import { hasTouch, isDisplayStandalone, isIOS } from "@web/core/browser/feature_detection";
 import { Dropdown } from "@web/core/dropdown/dropdown";
@@ -17,6 +26,7 @@ import { normalize } from "@web/core/l10n/utils";
 import { UIPlugin } from "@web/core/ui/ui_plugin";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
+import { SearchStatePlugin } from "@mail/utils/common/search_state_plugin";
 
 /** How long the pointer rests on a tab for the shown list to change to it. */
 export const PEEK_TAB_DELAY = 50;
@@ -82,27 +92,30 @@ export class MessagingMenu extends Component {
             () => (this.canPeek() && this.peekedTabState()) || this.selectedState()
         );
         this.activeTab = computed(() => this.state().activeTab);
-        this.messageSearch = useSearch({
-            fetch: (term) =>
-                this.activeTab().loadMore({
-                    filter: this.state().selectedFilter,
-                    pluginFilters: this.state().activePluginFilters,
-                    searchTerm: term,
-                }),
-            filter: (term) => {
-                const normalizedTerm = normalize(term);
-                const matches = (text) => normalize(text).includes(normalizedTerm);
-                return this.filteredMessages().filter(
-                    (m) =>
-                        matches(m.thread?.displayName) ||
-                        matches(m.authorName) ||
-                        matches(htmlToTextContentInline(m.bodyPreview || "")) ||
-                        matches(m.bodyTextContentInline) ||
-                        m.pollOptionLabels.some(matches)
-                );
+        providePlugins([SearchStatePlugin], {
+            options: {
+                fetch: (term) =>
+                    this.activeTab().loadMore({
+                        filter: this.state().selectedFilter,
+                        pluginFilters: this.state().activePluginFilters,
+                        searchTerm: term,
+                    }),
+                filter: (term) => {
+                    const normalizedTerm = normalize(term);
+                    const matches = (text) => normalize(text).includes(normalizedTerm);
+                    return this.filteredMessages().filter(
+                        (m) =>
+                            matches(m.thread?.displayName) ||
+                            matches(m.authorName) ||
+                            matches(htmlToTextContentInline(m.bodyPreview || "")) ||
+                            matches(m.bodyTextContentInline) ||
+                            m.pollOptionLabels.some(matches)
+                    );
+                },
+                deps: () => [this.filteredMessages()],
             },
-            deps: () => [this.filteredMessages()],
         });
+        this.messageSearch = usePlugin(SearchStatePlugin);
         this.close = useProps.static("close", types.function().optional());
         this.onToggleSidebar = useProps.static("onToggleSidebar", types.function().optional());
         this.searchInputAutofocus = useProps.static(
