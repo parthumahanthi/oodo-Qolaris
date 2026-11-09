@@ -7,7 +7,7 @@ from odoo.http import request
 from odoo.http.session import check
 from odoo.tools.misc import OrderedSet
 
-from odoo.addons.bus.bus_dispatcher import dispatch
+from odoo.addons.bus.bus_dispatcher import SUBSCRIPTIONS_CHANNEL, dispatch
 from odoo.addons.bus.models.bus import channel_with_db
 from odoo.addons.bus.websocket import wsrequest
 
@@ -77,7 +77,10 @@ class IrWebsocket(models.AbstractModel):
         return {
             "channels": OrderedSet(
                 channel_with_db(self.env.cr.dbname, c)
-                for c in self._build_bus_channel_list(list(channels))
+                for c in self._build_bus_channel_list(
+                    # Read by the dispatcher only, never sent to the client.
+                    [c for c in channels if c != SUBSCRIPTIONS_CHANNEL]
+                )
             ),
             "last": last,
         }
