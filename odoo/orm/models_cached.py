@@ -40,8 +40,20 @@ class CachedModel(Model):
         once would then fail on the column that does not exist yet.  This is
         exactly what ``prefetch_fields`` tells, as ``_auto_init`` turns it off
         for that reason.
+
+        It may not be either while one of the cached fields is being computed
+        (its records are then protected): that computation is no longer pending,
+        so ``_cached_data`` would cache the value in database, which is not
+        computed yet.  This happens when a compute method reads the field on
+        other records, like ``uom.uom.factor`` on ``relative_uom_id``.
         """
-        return self.env.context.get('prefetch_fields', True) and bool(self._cached_data_fields)
+        if not (self.env.context.get('prefetch_fields', True) and self._cached_data_fields):
+            return False
+        protected = self.env._protected
+        return not any(
+            protected.get(field)
+            for field in map(self._fields.__getitem__, self._cached_data_fields)
+        )
 
     @api.model
     @api.private
