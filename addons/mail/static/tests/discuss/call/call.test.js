@@ -37,8 +37,10 @@ import {
     manuallyDispatchProgrammaticEvent,
     mockSendBeacon,
     mockUserAgent,
+    mockWorker,
     queryFirst,
     test,
+    waitFor,
     waitUntil,
 } from "@odoo/hoot";
 import {
@@ -1466,4 +1468,46 @@ test("show warning when blur hardware acceleration is not available", async () =
     expect(".o-discuss-CallDropdown-content:has(:text('Performance Warning:'))").toBeVisible();
     await click("[title='Dismiss warning']");
     await contains(".o-discuss-BlurPerformanceWarning-button", { count: 0 });
+});
+
+test("camera turns on without blur when the blur model fails", async () => {
+    mockGetMedia();
+    patchWithCleanup(browser.navigator.mediaDevices, {
+        getUserMedia(constraints) {
+            if (!constraints.video) {
+                return super.getUserMedia(constraints);
+            }
+            const canvas = document.createElement("canvas");
+            const stream = canvas.captureStream();
+            canvas.getContext("2d").fillRect(0, 0, 1, 1);
+            return stream;
+        },
+    });
+    mockWorker((worker) => {
+        const workerSide = worker._messageChannel.port2;
+        workerSide.addEventListener("message", ({ data }) => {
+            if (worker.url.endsWith("tick_worker.js") && data.command === "start") {
+                workerSide.postMessage({ command: "tick" });
+            }
+        });
+    });
+    patchWithCleanup(window.SelfieSegmentation.prototype, {
+        close() {
+            asyncStep("blur model closed");
+            return super.close();
+        },
+        async send() {
+            throw new Error("Blur model unavailable");
+        },
+    });
+    localStorage.setItem("mail_user_setting_use_blur", "true");
+    const pyEnv = await startServer();
+    const channelId = pyEnv["discuss.channel"].create({ name: "General" });
+    await start();
+    await openDiscuss(channelId);
+    await click("[title='Start Call']");
+    await click("button[title='Turn camera on']");
+    await waitFor(".o_notification:has(:text('Blur model unavailable'))");
+    await waitFor("button[title='Stop camera']");
+    await waitForSteps(["blur model closed"]);
 });
