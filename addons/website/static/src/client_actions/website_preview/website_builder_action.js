@@ -558,6 +558,12 @@ export class WebsiteBuilderClientAction extends Component {
         this.state.isEditing = isEditing;
         this.addSystrayItems();
         await this.reloadIframe(isEditing);
+        // Pop the builder's guard entry only once the iframe has reloaded:
+        // Firefox keeps a stale entry if it is popped during the reload.
+        if (history.state?.skipRouteChange) {
+            router.skipLoad = true;
+            history.back();
+        }
     }
 
     async reloadIframe(isEditing = true, url) {
