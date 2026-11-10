@@ -816,7 +816,16 @@ Attempting to double-book your time off won't magically make your vacation 2x be
             validated_leaves._remove_resource_leave()
 
         employee_id = values.get('employee_id', False)
+        if values.get('state'):
+            self._check_approval_update(values['state'])
+            if any(holiday.validation_type == 'both' for holiday in self):
+                if values.get('employee_id'):
+                    employees = self.env['hr.employee'].browse(values.get('employee_id'))
+                else:
+                    employees = self.mapped('employee_id')
+                self._check_double_validation_rules(employees, values['state'])
         if not self.env.context.get('leave_fast_create'):
+<<<<<<< 27fb1f9f7f1b84c1373e06804493b07f70e319ac
             if values.get('state'):
                 self._check_approval_update(values['state'])
                 if any(holiday.validation_type == 'both' for holiday in self):
@@ -826,6 +835,17 @@ Attempting to double-book your time off won't magically make your vacation 2x be
                         employees = self.mapped('employee_id')
                     self._check_double_validation_rules(employees, values['state'])
             employee = self.env['hr.employee'].browse(employee_id) or self.employee_id
+||||||| 484708d89508dea80f38d55f2bcd6aaefde85d71
+            if values.get('state'):
+                self._check_approval_update(values['state'])
+                if any(holiday.validation_type == 'both' for holiday in self):
+                    if values.get('employee_id'):
+                        employees = self.env['hr.employee'].browse(values.get('employee_id'))
+                    else:
+                        employees = self.mapped('employee_id')
+                    self._check_double_validation_rules(employees, values['state'])
+=======
+>>>>>>> 3986d37cc337d8dbbdae2a4f02d80ed8e85ad854
             if 'date_from' in values:
                 values['request_date_from'] = datetime.date(values['date_from'].astimezone(pytz.timezone(employee.tz)))
             if 'date_to' in values:
