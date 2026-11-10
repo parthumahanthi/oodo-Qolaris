@@ -91,7 +91,8 @@ class BusPresence(models.Model):
 
     @api.model
     def _update_presence(self, inactivity_period, identity_field, identity_value):
-        presence = self.search([(identity_field, "=", identity_value)])
+        # sudo: res.users/mail.guest can update presence of accessible user/guest
+        presence = self.sudo().search([(identity_field, "=", identity_value)])
         values = {
             "last_poll": fields.Datetime.now(),
             "last_presence": fields.Datetime.now() - timedelta(milliseconds=inactivity_period),
@@ -99,7 +100,8 @@ class BusPresence(models.Model):
         }
         if not presence:
             values[identity_field] = identity_value
-            presence = self.create(values)
+            # sudo: res.users/mail.guest can update presence of accessible user/guest
+            presence = self.sudo().create(values)
         else:
             presence.write(values)
 
