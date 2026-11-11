@@ -128,6 +128,22 @@ test("Change the background position and click out of the iframe", async () => {
     expect("button.fa-undo").not.toBeEnabled();
 });
 
+test("Change the background position and save with the access key", async () => {
+    await dragAndDropBgImage();
+    queryOne(".o-snippets-top-actions [data-action='save']").click();
+    await animationFrame();
+    expect(".o_we_background_position_overlay").toHaveCount(0);
+});
+
+test("Change the background position and release the mouse over the sidebar", async () => {
+    await dragAndDropBgImage();
+    queryOne(".o-snippets-menu").dispatchEvent(
+        new MouseEvent("click", { bubbles: true, detail: 1 })
+    );
+    await animationFrame();
+    expect(".o_we_background_position_overlay").toHaveCount(1);
+});
+
 test("Background position overlay layout", async () => {
     expect.assertions(18);
 
