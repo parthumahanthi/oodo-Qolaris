@@ -272,6 +272,36 @@ class TestLoyalty(TestSaleCouponCommon):
         order._action_cancel()
         self.assertFalse(order.coupon_point_ids)
 
+    def test_salesperson_can_archive_card_used_in_draft_order(self):
+        """Archiving a card drops its points from draft orders, also for a salesperson."""
+        user_salesman = new_test_user(
+            self.env, login="user_salesman", groups="sales_team.group_sale_salesman"
+        )
+        program = self.env["loyalty.program"].create({
+            "name": "Loyalty Points",
+            "program_type": "loyalty",
+            "trigger": "auto",
+            "rule_ids": [Command.create({"reward_point_mode": "money", "reward_point_amount": 1})],
+            "reward_ids": [
+                Command.create({"reward_type": "discount", "discount": 10, "required_points": 100})
+            ],
+        })
+        order = (
+            self
+            .env["sale.order"]
+            .with_user(user_salesman)
+            .create({
+                "partner_id": self.partner.id,
+                "order_line": [Command.create({"product_id": self.product_a.id})],
+            })
+        )
+        order._update_programs_and_rewards()
+        card = order.coupon_point_ids.coupon_id.filtered(lambda c: c.program_id == program)
+        self.assertTrue(card)
+        card.with_user(user_salesman).action_archive()
+        self.assertFalse(card.active)
+        self.assertFalse(order.coupon_point_ids.filtered(lambda p: p.coupon_id == card))
+
     def test_distribution_amount_payment_programs(self):
         """Check how the amount of a payment reward is distributed.
 
@@ -1172,9 +1202,20 @@ class TestLoyalty(TestSaleCouponCommon):
     def test_ewallet_applied_ewallet_topup_in_order(self):
         self.ewallet._adjust_points(10 - self.ewallet.points, description="test setup")
         ewallet_top_up = Command.create({
+<<<<<<< 1cc16ad8a00f3cd35e4e685b433424681a8ce5be
             "product_id": self.env.ref("loyalty.ewallet_product_50").id,
             "product_uom_qty": 1,
+||||||| acebddef09d23f6b05c6dc3dae4dbe1fc9127394
+            'product_id': self.env.ref('loyalty.ewallet_product_50').id,
+            'product_uom_qty': 1,
+            'price_unit': 50,
+=======
+            "product_id": self.env.ref("loyalty.ewallet_product_50").id,
+            "product_uom_qty": 1,
+            "price_unit": 50,
+>>>>>>> a5f7c0080f2e16afc131a616277ea648a9411dc2
         })
+<<<<<<< 1cc16ad8a00f3cd35e4e685b433424681a8ce5be
 
         order = self.env["sale.order"].create({
             "partner_id": self.partner.id,
@@ -1185,6 +1226,26 @@ class TestLoyalty(TestSaleCouponCommon):
                     "product_uom_qty": 1,
                 }),
                 ewallet_top_up,
+||||||| acebddef09d23f6b05c6dc3dae4dbe1fc9127394
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'order_line': [Command.create({
+                'product_id': self.product_a.id,
+                'points_cost': 100,
+                'product_uom_qty': 1,
+            }),
+                ewallet_top_up
+=======
+        order = self.env["sale.order"].create({
+            "partner_id": self.partner.id,
+            "order_line": [
+                Command.create({
+                    "product_id": self.product_a.id,
+                    "points_cost": 100,
+                    "product_uom_qty": 1,
+                }),
+                ewallet_top_up,
+>>>>>>> a5f7c0080f2e16afc131a616277ea648a9411dc2
             ],
         })
         order._update_programs_and_rewards()
@@ -1193,11 +1254,24 @@ class TestLoyalty(TestSaleCouponCommon):
 
         self.assertEqual(self.ewallet.points, 50)
 
+<<<<<<< 1cc16ad8a00f3cd35e4e685b433424681a8ce5be
         # Case 2: eWallet top-up should be excluded from the discountable amount
         #         when paying with an eWallet
         order = self.env["sale.order"].create({
             "partner_id": self.partner.id,
             "order_line": [ewallet_top_up],
+||||||| acebddef09d23f6b05c6dc3dae4dbe1fc9127394
+        # Case 2: eWallet top-up should be excluded from the discountable amount when paying with an eWallet
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'order_line': [ewallet_top_up],
+=======
+        # Case 2: eWallet top-up should be excluded from the discountable amount when paying with an
+        # eWallet.
+        order = self.env["sale.order"].create({
+            "partner_id": self.partner.id,
+            "order_line": [ewallet_top_up],
+>>>>>>> a5f7c0080f2e16afc131a616277ea648a9411dc2
         })
         order._update_programs_and_rewards()
         with self.assertRaisesRegex(UserError, "There is nothing to discount"):
