@@ -233,11 +233,43 @@ class SaleOrder(models.Model):
     payment_term_id = fields.Many2one(
         comodel_name="account.payment.term",
         string="Payment Terms",
+<<<<<<< f96eb75d5e02ce4a2ba20c90bc4fb8d95f798fce
         compute="_compute_payment_term_id",
         store=True,
         readonly=False,
         precompute=True,
         check_company=True,  # Unrequired company
+||||||| 60657b50d171ddf84ab58717fdee5ac26031065b
+        compute='_compute_payment_term_id',
+        store=True, readonly=False, precompute=True, check_company=True,  # Unrequired company
+        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
+    preferred_payment_method_line_id = fields.Many2one(
+        comodel_name="account.payment.method.line", string="Payment Method",
+        compute="_compute_preferred_payment_method_line_id",
+        store=True, precompute=True, readonly=False, check_company=True,
+        domain="[('payment_type', '=', 'inbound'), ('company_id', '=', company_id)]")
+    pricelist_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string="Pricelist",
+        compute='_compute_pricelist_id',
+        store=True, readonly=False, precompute=True, check_company=True,  # Unrequired company
+        tracking=1,
+=======
+        compute='_compute_payment_term_id',
+        store=True, readonly=False, precompute=True, check_company=True,  # Unrequired company
+        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
+    preferred_payment_method_line_id = fields.Many2one(
+        comodel_name="account.payment.method.line", string="Payment Method",
+        compute="_compute_preferred_payment_method_line_id",
+        store=True, precompute=True, readonly=False, check_company=True,
+        domain=[('payment_type', '=', 'inbound')])
+    pricelist_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string="Pricelist",
+        compute='_compute_pricelist_id',
+        store=True, readonly=False, precompute=True, check_company=True,  # Unrequired company
+        tracking=1,
+>>>>>>> 559842c5c34f447836ecaf380d5866483e562b9b
         domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
     )
     preferred_payment_method_line_id = fields.Many2one(
