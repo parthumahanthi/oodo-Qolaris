@@ -127,7 +127,7 @@ class WebsiteProfile(http.Controller):
     # ---------------------------------------------------
     @http.route('/profile/user/save', type='jsonrpc', auth='user', methods=['POST'], website=True)
     def save_edited_profile(self, **kwargs):
-        user_id = int(kwargs.get('user_id', 0))
+        user_id = int(kwargs.get('user_id', 0)) if request.env.user._is_admin() else request.env.uid
         user = request.env['res.users'].browse(user_id or request.env.uid)
         qcontext = {
             'name': kwargs.get('name'),
@@ -146,12 +146,6 @@ class WebsiteProfile(http.Controller):
 
         if not user.partner_id._can_edit_country() and qcontext.get('country_id') != user.partner_id.country_id.id:
             raise UserError(_("Changing the country is not allowed once document(s) have been issued for your account. Please contact us directly for this operation."))
-        if not user.has_access('write'):
-            # no write access, grant it if we can edit the partner
-            if user.partner_id._can_be_edited_by_current_customer(**kwargs):
-                user = user.sudo()
-            else:
-                raise UserError(_("You are not allowed to edit this user"))
         user.write(qcontext)
 
     # Ranks and Badges
