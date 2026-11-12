@@ -79,8 +79,9 @@ export class Store extends Record {
                     record.Model.records.delete(record.localId);
                     for (const [usingRecord, names] of record._.uses.data.entries()) {
                         for (const [name2, count] of names.entries()) {
+                            const usingList = usingRecord._.fieldsList.get(name2);
                             for (let c = 0; c < count; c++) {
-                                usingRecord[name2].delete(record);
+                                usingList.delete(record);
                             }
                         }
                     }
@@ -88,8 +89,11 @@ export class Store extends Record {
                         ...record.Model._.fieldsOne.keys(),
                         ...record.Model._.fieldsMany.keys(),
                     ]) {
-                        const recordList = record[name];
-                        for (const usedRecord of recordList._.data()) {
+                        const recordList = record._.fieldsList.get(name);
+                        if (!recordList) {
+                            continue;
+                        }
+                        for (const usedRecord of recordList) {
                             usedRecord._.uses.delete(recordList);
                         }
                         recordList._.data.set([]);
