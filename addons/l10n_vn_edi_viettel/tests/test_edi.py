@@ -270,7 +270,7 @@ class TestVNEDI(AccountTestInvoicingCommon):
         self.assertDictEqual(actual, actual | expected)
         # 2. Check the itemInfo to ensure that the values make sense
         expected = {
-            'unitPrice': -100.0,
+            'unitPrice': 100.0,
             'itemTotalAmountWithoutTax': 100.0,
             'taxAmount': 10.0,
             'itemTotalAmountWithTax': 110.0,
