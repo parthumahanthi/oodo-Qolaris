@@ -100,6 +100,10 @@ ERROR_RETRY_JITTER = 10
 # How long (in seconds) the listener blocks waiting for a NOTIFY or a worker blocks
 # waiting for the queue.
 POLL_TIMEOUT = 50
+# Channel of the notifications making the websockets of their owners join and leave
+# channels, applied by the dispatcher instead of being sent. See
+# `bus.listener.mixin._bus_join/_bus_leave`.
+SUBSCRIPTIONS_CHANNEL = "__bus_subscriptions__"
 
 
 class DispatchState(Enum):
@@ -170,6 +174,9 @@ class ChannelTopic:
         # removes a websocket concurrently.
         self._websockets: frozenset[Websocket] = frozenset()
 
+    def _is_listened(self):
+        return bool(self._websockets or self._waiting_room)
+
     @property
     def excluded_ids(self):
         """Notification IDs within the safety window and that should therefore be excluded
@@ -239,6 +246,58 @@ class ChannelTopic:
         if new_notifications:
             self._forward_notifications(new_notifications, self._websockets)
             self._update_history(new_notifications)
+
+
+class SubscriptionsTopic(ChannelTopic):
+    """The topic of a database's ``SUBSCRIPTIONS_CHANNEL``. Its notifications are
+    subscription changes, applied by the dispatcher instead of being sent. It has no
+    websocket and lives as long as the database has subscribed websockets.
+    """
+
+    def __init__(self, channel: tuple, last_fetched_id: LastFetchedId):
+        super().__init__(channel, last_fetched_id)
+        self._websocket_count = 0
+        # Changes as (notification id, owners, channels to join, channels to leave).
+        # Parsed while the worker dispatches, without the db lock: they wait here until
+        # the worker releases the topic and applies them.
+        self._pending: list[tuple] = []
+        # Changes applied in the last ``MAX_HISTORY_SEC``, as (applied at, change).
+        self._applied: list[tuple[float, tuple]] = []
+
+    def _is_listened(self):
+        return self._websocket_count > 0
+
+    def _forward_notifications(self, notifications: list, websockets: Iterable[Websocket]):
+        for notification in notifications:
+            try:
+                self._pending += [
+                    (
+                        notification["id"],
+                        {
+                            (self._dbname, model, owner_id)
+                            for model, owner_ids in change["owners"].items()
+                            for owner_id in owner_ids
+                        },
+                        [tuplify(channel) for channel in change["join"]],
+                        {tuplify(channel) for channel in change["leave"]},
+                    )
+                    for change in notification["message"]["payload"]
+                ]
+            except (AttributeError, LookupError, TypeError):
+                _logger.warning("Bus: ignored malformed subscription changes %s", notification["id"])
+
+    def _take_pending(self) -> list[tuple]:
+        changes, self._pending = self._pending, []
+        return changes
+
+    def _remember(self, changes: list[tuple]):
+        now = time.monotonic()
+        self._applied = [(ts, c) for ts, c in self._applied if now - ts <= self.MAX_HISTORY_SEC]
+        self._applied += [(now, c) for c in changes]
+
+    def _recent_changes(self) -> list[tuple]:
+        now = time.monotonic()
+        return [c for ts, c in self._applied if now - ts <= self.MAX_HISTORY_SEC]
 
 
 def get_reserved_cursor_ratio(default=0.3):
@@ -395,45 +454,102 @@ class BusDispatcher(threading.Thread):
         """Subscribe the websocket to ``channels``, replacing any existing subscription.
 
         ``last_fetched_id`` only sets the starting point for channels the websocket isn't
-        subscribed to yet.
+        subscribed to yet. The recent subscription changes are applied again, as
+        ``channels`` may have been read before them.
         """
         if not channels:
             self.unsubscribe(websocket)
             return
         with self._lock_for_db(websocket._db):
+            subscriptions_channel = (websocket._db, SUBSCRIPTIONS_CHANNEL)
+            subscriptions_topic = self._topic_by_channel.get(subscriptions_channel)
+            if subscriptions_topic is None:
+                subscriptions_topic = SubscriptionsTopic(subscriptions_channel, last_fetched_id)
+                self._topic_by_channel[subscriptions_channel] = subscriptions_topic
+                self._queue_topic(subscriptions_topic)
+            if websocket not in self._topics_by_websocket:
+                subscriptions_topic._websocket_count += 1
             current_topics = self._topics_by_websocket.get(websocket, set())
-            next_topics = set()
-            for channel in channels:
-                topic = self._topic_by_channel.get(channel)
-                if topic is None:
-                    topic = ChannelTopic(channel, last_fetched_id)
-                    self._topic_by_channel[channel] = topic
-                next_topics.add(topic)
-                if (
-                    websocket in topic._websockets
-                    or websocket in topic._waiting_room
-                    or websocket in topic._waiting_room_snapshot
-                ):
-                    continue
-                # Not yet a full subscriber nor in the waiting room: put in the waiting
-                # room for catch-up.
-                topic._waiting_room[websocket] = last_fetched_id
-                self._notify_topic(topic)
-            for topic in current_topics:
-                if topic in next_topics:
-                    continue
-                topic._websockets = topic._websockets - {websocket}
-                topic._waiting_room.pop(websocket, None)
-                self._drop_topic_if_empty(topic)
+            next_topics = {
+                self._add_to_topic(websocket, channel, last_fetched_id) for channel in channels
+            }
+            for topic in current_topics - next_topics:
+                self._remove_from_topic(topic, {websocket})
             self._topics_by_websocket[websocket] = next_topics
+            channels = {topic._channel for topic in next_topics}
+            recent_changes = [
+                change
+                for change in subscriptions_topic._recent_changes()
+                if not change[1].isdisjoint(channels)
+            ]
+            # Sorted: a concurrent transaction can commit a lower id after a higher one.
+            recent_changes.sort(key=itemgetter(0))
+            self._apply_subscription_changes({websocket: recent_changes}, last_fetched_id)
         self._ensure_started()
 
     def unsubscribe(self, websocket: Websocket):
         with self._lock_for_db(websocket._db):
-            for topic in self._topics_by_websocket.pop(websocket, set()):
-                topic._websockets = topic._websockets - {websocket}
-                topic._waiting_room.pop(websocket, None)
-                self._drop_topic_if_empty(topic)
+            topics = self._topics_by_websocket.pop(websocket, None)
+            if topics is None:
+                return
+            for topic in topics:
+                self._remove_from_topic(topic, {websocket})
+            subscriptions_topic = self._topic_by_channel[websocket._db, SUBSCRIPTIONS_CHANNEL]
+            subscriptions_topic._websocket_count -= 1
+            self._drop_topic_if_empty(subscriptions_topic)
+
+    def _add_to_topic(self, websocket: Websocket, channel: tuple, last_fetched_id: LastFetchedId):
+        """Make the websocket listen to the channel from ``last_fetched_id`` on, return
+        the topic."""
+        # Must be called with the dbname's lock held.
+        topic = self._topic_by_channel.get(channel)
+        if topic is None:
+            topic = ChannelTopic(channel, last_fetched_id)
+            self._topic_by_channel[channel] = topic
+        if (
+            websocket in topic._websockets
+            or websocket in topic._waiting_room
+            or websocket in topic._waiting_room_snapshot
+        ):
+            return topic
+        topic._waiting_room[websocket] = last_fetched_id
+        self._notify_topic(topic)
+        return topic
+
+    def _remove_from_topic(self, topic: ChannelTopic, websockets: set[Websocket]):
+        # Must be called with the dbname's lock held.
+        topic._websockets = topic._websockets - websockets
+        for websocket in websockets:
+            topic._waiting_room.pop(websocket, None)
+        self._drop_topic_if_empty(topic)
+
+    def _apply_subscription_changes(
+        self,
+        changes_by_websocket: dict[Websocket, list[tuple]],
+        last_fetched_id: LastFetchedId = 0,
+    ):
+        """Apply each websocket's changes, sorted by id. A joined channel is caught up from
+        its change, or from ``last_fetched_id`` if later. Leaving a record leaves its
+        sub-channels too."""
+        # Must be called with the dbname's lock held. Removals are batched per topic, and
+        # cancelled by a later join.
+        websockets_by_left_topic = defaultdict(set)
+        for websocket, changes in changes_by_websocket.items():
+            topics = self._topics_by_websocket.get(websocket)
+            if topics is None:
+                continue  # Unsubscribed in the meantime.
+            for notification_id, _owners, join, leave in changes:
+                for topic in [t for t in topics if t._channel in leave or t._channel[:3] in leave]:
+                    topics.remove(topic)
+                    websockets_by_left_topic[topic].add(websocket)
+                for channel in join:
+                    topic = self._add_to_topic(
+                        websocket, channel, max(notification_id, last_fetched_id)
+                    )
+                    topics.add(topic)
+                    websockets_by_left_topic[topic].discard(websocket)
+        for topic, websockets in websockets_by_left_topic.items():
+            self._remove_from_topic(topic, websockets)
 
     def _lock_for_db(self, dbname: str):
         with self._lock_by_dbname_guard:
@@ -479,8 +595,7 @@ class BusDispatcher(threading.Thread):
     def _drop_topic_if_empty(self, topic: ChannelTopic):
         # Must be called with the dbname's lock held.
         if (
-            topic._websockets
-            or topic._waiting_room
+            topic._is_listened()
             # There might still be waiting sockets in an ongoing claim. Let the worker
             # drop the topic if necessary when releasing.
             or topic._state in (DispatchState.IN_FLIGHT, DispatchState.DIRTY)
@@ -514,7 +629,8 @@ class BusDispatcher(threading.Thread):
         *,
         rollback=False,
     ):
-        """Release topics back to the dispatcher and resolve their waiting room.
+        """Release topics back to the dispatcher, resolve their waiting room, then apply
+        the subscription changes parsed by this worker.
 
         If ``rollback`` is False, waiting websockets are promoted to full subscribers and
         topics are re-queued only if ``DIRTY``.
@@ -542,6 +658,20 @@ class BusDispatcher(threading.Thread):
                     continue
                 if is_dirty or rollback:
                     self._queue_topic(topic)
+            subscriptions_topic = self._topic_by_channel.get((dbname, SUBSCRIPTIONS_CHANNEL))
+            if subscriptions_topic in topics and subscriptions_topic._pending:
+                changes = subscriptions_topic._take_pending()
+                changes_by_websocket = defaultdict(list)
+                for change in changes:
+                    owner_topics = filter(None, map(self._topic_by_channel.get, change[1]))
+                    for websocket in {
+                        ws
+                        for topic in owner_topics
+                        for ws in chain(topic._websockets, topic._waiting_room, topic._waiting_room_snapshot)
+                    }:
+                        changes_by_websocket[websocket].append(change)
+                self._apply_subscription_changes(changes_by_websocket)
+                subscriptions_topic._remember(changes)
 
     def _fetch(self, cr, topics: set[ChannelTopic] | frozenset[ChannelTopic]):
         """Fetch pending notifications for the given topics, grouped by channel."""
