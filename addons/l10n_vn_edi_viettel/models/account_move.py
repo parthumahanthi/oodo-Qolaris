@@ -775,14 +775,12 @@ class AccountMove(models.Model):
         discount_lines = self.invoice_line_ids._get_discount_lines()
         downpayment_lines = self.invoice_line_ids._get_downpayment_lines()
         for line in self.invoice_line_ids.filtered(lambda ln: ln.display_type in code_map):
-            # For credit notes amount, we send negative values (reduces the amount of the original invoice)
-            sign = 1 if self.move_type == 'out_invoice' else -1
             item_name = line.name.replace('\n', ' ')
             item_information = {
                 'itemCode': line.product_id.code or '',
                 'itemName': textwrap.shorten(item_name, width=500, placeholder='...'),
                 'unitName': line.product_uom_id.name or 'Units',
-                'unitPrice': line.currency_id.round(line.price_unit * sign),
+                'unitPrice': line.currency_id.round(line.price_unit),
                 'quantity': line.quantity,
                 # This amount should be without discount applied.
                 'itemTotalAmountWithoutTax': line.currency_id.round(line.price_unit * line.quantity),
