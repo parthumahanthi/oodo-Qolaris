@@ -720,14 +720,30 @@ export class Rtc extends Record {
     /**
      * @param {import("models").DiscussChannel} [channel]
      */
+<<<<<<< af80fa769d0b967d9da67594c81dae2902c6678a
     endCall(channel = this.localChannel) {
         this._endHost();
+||||||| 95943f7d2b7ad060a29bfb544dfc51ad4c18ceda
+    endCall(channel = this.state.channel) {
+        this._endHost();
+=======
+    endCall(channel = this.state.channel) {
+>>>>>>> ec1cf7de6d1a07993263925ddafb1fb576a27033
         if (channel.self_member_id) {
             channel.self_member_id.rtc_inviting_session_id = undefined;
         }
         channel.activeRtcSession = undefined;
+<<<<<<< af80fa769d0b967d9da67594c81dae2902c6678a
         if (channel.eq(this.localChannel)) {
             this.logs.end = new Date().toISOString();
+||||||| 95943f7d2b7ad060a29bfb544dfc51ad4c18ceda
+        if (channel.eq(this.state.channel)) {
+            this.state.logs.end = new Date().toISOString();
+=======
+        if (channel.eq(this.state.channel)) {
+            this._endHost();
+            this.state.logs.end = new Date().toISOString();
+>>>>>>> ec1cf7de6d1a07993263925ddafb1fb576a27033
             this.dumpLogs();
             this.pttExtService.unsubscribe();
             this.network?.disconnect();
@@ -1128,7 +1144,7 @@ export class Rtc extends Record {
                 this.crossTabInitDeferred.resolve();
                 return;
             case CROSS_TAB_HOST_MESSAGE.CLOSE: {
-                if (this._remotelyHostedSessionId !== hostedSessionId) {
+                if (this.isHost || this._remotelyHostedSessionId !== hostedSessionId) {
                     return;
                 }
                 this.clear();
